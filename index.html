@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mayolista — Inicio de Sesión</title>
+  <meta name="description" content="Mayolista: Sistema de pedidos mayoristas con captura de voz e exportación inteligente.">
+  <meta name="theme-color" content="#0B0C10">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .gradient-bg {
+      background: radial-gradient(ellipse at 30% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(99,102,241,0.08) 0%, transparent 60%),
+                  var(--bg-base);
+      min-height: 100vh;
+    }
+    .version-badge { position: fixed; bottom: 12px; right: 12px; font-size: 0.65rem; color: var(--text-muted); }
+  </style>
+</head>
+<body class="gradient-bg">
+<div class="toast" id="toast"></div>
+
+<main class="container pb-footer fade-in" style="max-width:420px">
+
+  <!-- Hero -->
+  <div class="login-hero">
+    <div class="logo">
+      <div class="logo-icon">🛒</div>
+      <div>
+        <div class="logo-text">Mayolista</div>
+        <div class="logo-sub">Pedidos Mayoristas</div>
+      </div>
+    </div>
+    <p class="text-sm" style="margin-top:8px;color:var(--text-muted)">
+      Completá los datos para iniciar el pedido
+    </p>
+  </div>
+
+  <!-- Mayorista selector -->
+  <div class="section-card mb-md" id="cardMayorista">
+    <div class="section-card-header">
+      <span class="icon">🏭</span>
+      <h3>Mayorista</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group">
+        <label class="form-label" for="selectMayorista">Seleccioná el mayorista</label>
+        <select class="form-input" id="selectMayorista">
+          <option value="">— Seleccioná —</option>
+        </select>
+      </div>
+      <div id="btnNewMayoristaWrap" style="text-align:center">
+        <button class="btn btn-ghost btn-sm" id="btnNewMayorista">+ Agregar mayorista</button>
+        <a href="admin.html" class="btn btn-ghost btn-sm" style="margin-left:8px">⚙️ Admin</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendedor -->
+  <div class="section-card mb-md">
+    <div class="section-card-header">
+      <span class="icon">👤</span>
+      <h3>Datos del Vendedor</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group">
+        <label class="form-label" for="inputVendedor">Nombre completo</label>
+        <input class="form-input" id="inputVendedor" type="text" placeholder="Ej: Juan García" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputLegajo">Legajo / N° vendedor</label>
+        <input class="form-input" id="inputLegajo" type="text" placeholder="Ej: V-045" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <!-- Cliente -->
+  <div class="section-card mb-lg">
+    <div class="section-card-header">
+      <span class="icon">🏪</span>
+      <h3>Datos del Cliente</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group">
+        <label class="form-label" for="inputComercio">Nombre del comercio *</label>
+        <input class="form-input" id="inputComercio" type="text" placeholder="Ej: Almacén Don José" autocomplete="organization">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputDireccion">Dirección</label>
+        <input class="form-input" id="inputDireccion" type="text" placeholder="Ej: Av. San Martín 1234" autocomplete="street-address">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputCuit">CUIT</label>
+        <input class="form-input" id="inputCuit" type="text" placeholder="Ej: 30-12345678-9" inputmode="numeric">
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <button class="btn btn-primary btn-block btn-lg" id="btnIniciar" style="font-size:1.05rem">
+    🛒 Iniciar Pedido
+  </button>
+
+  <p class="text-center text-xs text-muted mt-md">
+    Los datos se guardan localmente en el dispositivo
+  </p>
+
+</main>
+
+<div class="version-badge">v1.0</div>
+
+<script src="js/app.js"></script>
+<script>
+// ── Service Worker Registration ────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+// ── Index page logic ──────────────────────────────────────────
+(function () {
+  const sel       = document.getElementById('selectMayorista');
+  const btnNew    = document.getElementById('btnNewMayorista');
+  const btnStart  = document.getElementById('btnIniciar');
+
+  function loadProfiles() {
+    const profiles = APP.getProfiles();
+    sel.innerHTML = '<option value="">— Seleccioná —</option>';
+    profiles.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value       = p.id;
+      opt.textContent = p.nombre;
+      sel.appendChild(opt);
+    });
+    // Select active profile
+    const active = APP.getActiveProfile();
+    if (active) sel.value = active;
+  }
+
+  function restoreSession() {
+    const s = APP.getSession();
+    if (!s) return;
+    setVal('inputVendedor',  s.vendedor  || '');
+    setVal('inputLegajo',    s.legajo    || '');
+    setVal('inputComercio',  s.comercio  || '');
+    setVal('inputDireccion', s.direccion || '');
+    setVal('inputCuit',      s.cuit      || '');
+  }
+
+  function setVal(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.value = v;
+  }
+  function getVal(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+
+  btnNew.addEventListener('click', () => {
+    const nombre = prompt('Nombre del mayorista:');
+    if (!nombre || !nombre.trim()) return;
+    const profiles = APP.getProfiles();
+    const newP = { id: Date.now().toString(), nombre: nombre.trim(), email: '' };
+    profiles.push(newP);
+    APP.saveProfiles(profiles);
+    loadProfiles();
+    sel.value = newP.id;
+    APP.showToast(`✓ "${newP.nombre}" agregado`, 'success');
+  });
+
+  sel.addEventListener('change', () => {
+    APP.setActiveProfile(sel.value);
+  });
+
+  btnStart.addEventListener('click', () => {
+    const vendedor  = getVal('inputVendedor');
+    const comercio  = getVal('inputComercio');
+    if (!vendedor) { APP.showToast('Ingresá tu nombre', 'error'); return; }
+    if (!comercio)  { APP.showToast('Ingresá el nombre del comercio', 'error'); return; }
+
+    const profiles   = APP.getProfiles();
+    const profile    = profiles.find(p => p.id === sel.value);
+
+    const session = {
+      mayorista:  profile ? profile.nombre : '',
+      profileId:  sel.value,
+      vendedor:   vendedor,
+      legajo:     getVal('inputLegajo'),
+      comercio:   comercio,
+      direccion:  getVal('inputDireccion'),
+      cuit:       getVal('inputCuit'),
+      timestamp:  Date.now(),
+    };
+    APP.setSession(session);
+    window.location.href = 'pedido.html';
+  });
+
+  // ── Init ──
+  loadProfiles();
+  restoreSession();
+
+  // Add default "Demo Mayorista" if no profiles
+  if (!APP.getProfiles().length) {
+    const demo = [{ id: 'demo', nombre: 'Demo Mayorista', email: '' }];
+    APP.saveProfiles(demo);
+    loadProfiles();
+    sel.value = 'demo';
+    APP.setActiveProfile('demo');
+  }
+})();
+</script>
+</body>
+</html>

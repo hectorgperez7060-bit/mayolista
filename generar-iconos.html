@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador de Iconos — Mayolista</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0B0C10; color: #fff; padding: 32px; text-align: center; }
+    h2 { color: #3B82F6; margin-bottom: 24px; }
+    canvas { border: 1px solid #333; border-radius: 12px; margin: 8px; }
+    .btn { display: inline-block; margin: 8px; padding: 12px 24px; background: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; text-decoration: none; }
+    .btn:hover { background: #2563EB; }
+    p { color: #94A3B8; margin: 12px 0; }
+    .step { background: #161B22; border-radius: 12px; padding: 16px 24px; margin: 12px auto; max-width: 500px; text-align: left; border: 1px solid #1E2430; }
+    .step span { color: #3B82F6; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>🛒 Generador de Iconos Mayolista</h2>
+  <p>Esta página genera los iconos necesarios para instalar la app en el móvil.</p>
+
+  <canvas id="c192" width="192" height="192"></canvas>
+  <canvas id="c512" width="512" height="512"></canvas>
+
+  <br><br>
+  <a class="btn" id="dl192" download="icon-192.png">⬇ Descargar icon-192.png</a>
+  <a class="btn" id="dl512" download="icon-512.png">⬇ Descargar icon-512.png</a>
+
+  <br><br>
+  <div class="step">
+    <span>📁 Paso 1:</span> Descargá los dos archivos de arriba
+  </div>
+  <div class="step">
+    <span>📂 Paso 2:</span> Creá una carpeta llamada <code>icons</code> dentro de la carpeta <code>mayolista</code>
+  </div>
+  <div class="step">
+    <span>🖼 Paso 3:</span> Pegá los dos archivos PNG dentro de <code>mayolista/icons/</code>
+  </div>
+  <div class="step">
+    <span>✅ Listo:</span> La app ya se puede instalar en el móvil desde Chrome → menú ⋮ → "Añadir a pantalla de inicio"
+  </div>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const sz = canvas.width;
+      const r = sz * 0.16; // border radius
+
+      // Background gradient
+      const bg = ctx.createLinearGradient(0, 0, sz, sz);
+      bg.addColorStop(0, '#1E3A8A');
+      bg.addColorStop(1, '#1D4ED8');
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(sz - r, 0);
+      ctx.quadraticCurveTo(sz, 0, sz, r);
+      ctx.lineTo(sz, sz - r);
+      ctx.quadraticCurveTo(sz, sz, sz - r, sz);
+      ctx.lineTo(r, sz);
+      ctx.quadraticCurveTo(0, sz, 0, sz - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Inner glow
+      const glow = ctx.createRadialGradient(sz*0.4, sz*0.3, 0, sz*0.5, sz*0.5, sz*0.7);
+      glow.addColorStop(0, 'rgba(96,165,250,0.3)');
+      glow.addColorStop(1, 'rgba(96,165,250,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, sz, sz);
+
+      // Shopping cart emoji
+      const fs = sz * 0.52;
+      ctx.font = `${fs}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🛒', sz * 0.5, sz * 0.46);
+
+      // "M" badge bottom-right
+      const badgeSz = sz * 0.28;
+      const bx = sz * 0.72, by = sz * 0.72;
+      ctx.fillStyle = 'rgba(11,12,16,0.85)';
+      ctx.beginPath();
+      ctx.arc(bx, by, badgeSz / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#60A5FA';
+      ctx.font = `bold ${badgeSz * 0.65}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('M', bx, by + 1);
+    }
+
+    function setup(canvasId, dlId) {
+      const c = document.getElementById(canvasId);
+      drawIcon(c);
+      const link = document.getElementById(dlId);
+      link.href = c.toDataURL('image/png');
+    }
+
+    setup('c192', 'dl192');
+    setup('c512', 'dl512');
+  </script>
+</body>
+</html>

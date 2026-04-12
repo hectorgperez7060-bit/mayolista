@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pedido — Mayolista</title>
+  <meta name="description" content="Captura de pedidos con voz y búsqueda inteligente de productos mayoristas.">
+  <meta name="theme-color" content="#0B0C10">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .page-wrapper { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .order-footer { position: sticky; } /* override fixed so it works in flex layout */
+    .order-table-wrapper { max-height: 42vh; overflow-y: auto; }
+
+    /* Export menu */
+    .export-menu {
+      position: fixed; bottom: 72px; right: 12px;
+      background: var(--bg-elevated); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: var(--shadow-lg); z-index: 200;
+      display: none; min-width: 200px;
+      animation: slide-down 0.18s ease;
+    }
+    .export-menu.open { display: block; }
+    .export-menu-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem; font-weight: 500;
+      transition: background var(--transition-fast);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .export-menu-item:last-child { border-bottom: none; }
+    .export-menu-item:hover, .export-menu-item:active { background: var(--bg-surface); }
+    .export-menu-item .em-icon { font-size: 1.2rem; width: 24px; text-align: center; }
+
+    /* Confirm modal */
+    .confirm-overlay {
+      position:fixed;inset:0;z-index:900;
+      background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+      display:flex;align-items:center;justify-content:center;
+      padding:var(--spacing-md);
+    }
+    .confirm-box {
+      background:var(--bg-elevated);border:1px solid var(--border-hover);
+      border-radius:var(--radius-xl);padding:var(--spacing-xl) var(--spacing-lg);
+      max-width:340px;width:100%;text-align:center;
+      animation:fade-in .18s ease;
+    }
+    .confirm-box h4{font-size:1.1rem;margin-bottom:8px;}
+    .confirm-box p{font-size:.875rem;color:var(--text-secondary);margin-bottom:var(--spacing-lg);}
+    .confirm-btns{display:flex;gap:var(--spacing-sm);}
+    .confirm-btns button{flex:1;}
+
+    /* Promo input combo */
+    .promo-cell{display:flex;align-items:center;gap:3px;}
+    .promo-type-btn{
+      width:26px;height:26px;border-radius:var(--radius-sm);
+      border:1px solid var(--border);background:var(--bg-surface);
+      color:var(--text-muted);font-size:.6rem;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;padding:0;
+      transition:all var(--transition-fast);
+    }
+    .promo-type-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .promo-type-btn.nplus{border-color:var(--success);color:var(--success);background:var(--success-dim);}
+  </style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- Confirm modal (replaces native confirm) -->
+<div id="confirmOverlay" style="display:none" class="confirm-overlay">
+  <div class="confirm-box">
+    <h4 id="confirmTitle"></h4>
+    <p id="confirmMsg"></p>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+      <button class="btn btn-danger" id="confirmOk">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export overlay backdrop -->
+<div id="exportBackdrop" style="display:none;position:fixed;inset:0;z-index:199" onclick="closeExportMenu()"></div>
+
+<!-- Export menu -->
+<div class="export-menu" id="exportMenu">
+  <div class="export-menu-item" id="btnExportWhatsApp">
+    <span class="em-icon">💬</span> Enviar por WhatsApp
+  </div>
+  <div class="export-menu-item" id="btnExportEmail">
+    <span class="em-icon">📧</span> Enviar por Email
+  </div>
+  <div class="export-menu-item" id="btnExportExcel">
+    <span class="em-icon">📊</span> Exportar Excel
+  </div>
+  <div class="export-menu-item" id="btnExportPDF">
+    <span class="em-icon">📄</span> Exportar PDF
+  </div>
+  <div class="export-menu-item" id="btnSave">
+    <span class="em-icon">💾</span> Guardar en historial
+  </div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar" style="flex-shrink:0">
+  <div class="navbar-inner">
+    <div>
+      <div class="text-xs text-muted" id="headerMayorista" style="letter-spacing:.04em">Mayolista</div>
+      <div style="font-weight:700;font-size:1rem;line-height:1.2" id="headerComercio">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="text-xs text-muted" id="headerVendedor"></div>
+      <a href="index.html" class="btn btn-ghost btn-sm">🔄</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Scrollable content -->
+<div class="page-wrapper">
+  <div style="max-width:480px;margin:0 auto;padding:12px 12px 16px">
+
+    <!-- ── Capture Zone ── -->
+    <div class="capture-zone mb-md fade-in">
+      <div class="capture-mic-row">
+        <button class="mic-button" id="micBtn" title="Toca para hablar / pausar">
+          🎙️
+        </button>
+        <div class="capture-status">
+          <div class="capture-status-label" id="captureStatusLabel">MICRÓFONO</div>
+          <div class="capture-status-text" id="captureStatusText">
+            Presioná para hablar
+          </div>
+        </div>
+      </div>
+      <div class="capture-input-row">
+        <input
+          class="form-input"
+          id="manualInput"
+          type="search"
+          placeholder="O escribí el producto… (ej: 12 harinas)"
+          autocomplete="off" autocorrect="off"
+          autocapitalize="none" spellcheck="false">
+        <button class="btn btn-primary" id="btnManualSearch" style="padding:0 16px;flex-shrink:0">
+          🔍
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Results Panel ── -->
+    <div class="results-panel mb-md" id="resultsPanel">
+      <div class="results-header">
+        <span id="resultsCount">0 resultados</span>
+        <button class="btn btn-ghost btn-sm" id="btnCloseResults">✕</button>
+      </div>
+      <div id="resultsList"></div>
+    </div>
+
+    <!-- ── Order Table Card ── -->
+    <div class="card" style="padding:0;overflow:hidden;">
+
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-elevated);">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;font-size:.9375rem">Pedido</span>
+          <span class="badge badge-primary" id="itemCount">0 prod.</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" id="btnLoadTemplate" title="Cargar pedido anterior">📥 Plantilla</button>
+          <button class="btn btn-ghost btn-sm" id="btnClearOrder">🗑️</button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="order-empty" id="orderEmpty">
+        <span class="order-empty-icon">🛒</span>
+        <p>El pedido está vacío</p>
+        <p class="text-xs mt-sm">Hablá o escribí para buscar productos</p>
+      </div>
+
+      <!-- Table -->
+      <div class="order-table-wrapper">
+        <table class="order-table" id="orderTable">
+          <thead>
+            <tr>
+              <th style="min-width:130px">Producto</th>
+              <th style="text-align:right;min-width:52px">Cant.</th>
+              <th style="text-align:right;min-width:66px">Precio</th>
+              <th style="min-width:72px">Promo</th>
+              <th style="text-align:right;min-width:78px">Total</th>
+              <th style="width:32px"></th>
+            </tr>
+          </thead>
+          <tbody id="orderTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- ── Fixed Footer ── -->
+<div class="order-footer" style="flex-shrink:0">
+  <div class="order-footer-inner">
+    <div class="total-display">
+      <span class="total-label">Total del pedido</span>
+      <span class="total-amount" id="totalAmount">$0</span>
+    </div>
+    <div class="footer-actions">
+      <a href="admin.html" class="btn btn-ghost btn-sm btn-icon" title="Administración">⚙️</a>
+      <button class="btn btn-primary" id="btnExportToggle" style="padding:0 18px;gap:6px">
+        Exportar <span style="font-size:.8rem;opacity:.8">▲</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/app.js?v=2"></script>
+<script src="js/export.js?v=2"></script>
+<script src="js/ai.js?v=2"></script>
+<script src="js/voice.js?v=2"></script>
+<script src="js/pedido.js?v=2"></script>
+<script>
+  // ── Service Worker Registration ───────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+
+  // ── Confirm modal helper ──────────────────────────────────
+  window.CONFIRM = function(title, msg, onOk) {
+    const ov  = document.getElementById('confirmOverlay');
+    const ttl = document.getElementById('confirmTitle');
+    const txt = document.getElementById('confirmMsg');
+    const ok  = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    ttl.textContent = title;
+    txt.textContent = msg;
+    ov.style.display = 'flex';
+    const close = () => { ov.style.display = 'none'; };
+    ok.onclick     = () => { close(); onOk(); };
+    cancel.onclick = close;
+  };
+  document.getElementById('confirmOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('confirmOverlay'))
+      document.getElementById('confirmOverlay').style.display = 'none';
+  });
+
+  // ── Export menu ───────────────────────────────────────────
+  const exportMenu     = document.getElementById('exportMenu');
+  const exportBackdrop = document.getElementById('exportBackdrop');
+
+  document.getElementById('btnExportToggle').addEventListener('click', () => {
+    const open = exportMenu.classList.contains('open');
+    if (open) closeExportMenu();
+    else {
+      exportMenu.classList.add('open');
+      exportBackdrop.style.display = 'block';
+    }
+  });
+
+  function closeExportMenu() {
+    exportMenu.classList.remove('open');
+    exportBackdrop.style.display = 'none';
+  }
+</script>
+</body>
+</html>

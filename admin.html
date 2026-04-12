@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Administración — Mayolista</title>
+  <meta name="description" content="Gestión de mayoristas, catálogos y historial de pedidos en Mayolista.">
+  <meta name="theme-color" content="#0B0C10">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- SheetJS for Excel import -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="js/ai.js"></script>
+  <style>
+    .col-map-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .col-map-label { width: 110px; font-size:.8rem; color:var(--text-secondary); flex-shrink:0; }
+    .col-map-row select { flex:1; }
+    #columnMapper { display:none; }
+  </style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <div class="logo">
+      <div class="logo-icon" style="width:34px;height:34px;font-size:1rem">🛒</div>
+      <div class="logo-text" style="font-size:1.25rem">Mayolista</div>
+    </div>
+    <a href="pedido.html" class="btn btn-ghost btn-sm">← Volver al Pedido</a>
+  </div>
+</nav>
+
+<main class="container pb-footer" style="max-width:480px;padding-top:16px">
+
+  <h2 style="margin-bottom:16px">⚙️ Administración</h2>
+
+  <!-- ── IA Config ── -->
+  <div class="section-card mb-md" id="sectionIA">
+    <div class="section-card-header" style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(59,130,246,.08))">
+      <span class="icon">✨</span>
+      <h3>Inteligencia Artificial</h3>
+      <span id="aiStatusBadge" style="margin-left:auto;font-size:.75rem;padding:3px 10px;border-radius:999px;font-weight:700"></span>
+    </div>
+    <div class="section-card-body">
+      <p class="text-sm" style="color:var(--text-secondary);margin-bottom:0">
+        Con la IA activada, el sistema entiende frases como<br>
+        <em>"azucar chango 500g 77 unidades"</em>, <em>"poneme doce harinas tres ceros"</em>,<br>
+        o cualquier forma de hablar en español.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="inputGeminiKey">Clave API de Gemini (Google)</label>
+        <input class="form-input" id="inputGeminiKey" type="password"
+          placeholder="AIzaSy..."
+          autocomplete="off" spellcheck="false">
+        <span class="text-xs text-muted">
+          Gratis en <strong style="color:var(--primary)">aistudio.google.com</strong> → Get API Key → Copy
+        </span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="btnSaveAiKey">✓ Activar IA</button>
+        <button class="btn btn-ghost" id="btnTestAiKey">🧪 Probar</button>
+        <button class="btn btn-danger btn-sm" id="btnClearAiKey">🗑️ Desactivar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Catálogo activo ── -->
+  <div class="section-card mb-md" id="sectionCatalogo">
+    <div class="section-card-header">
+      <span class="icon">📦</span>
+      <h3>Catálogo de Productos</h3>
+    </div>
+    <div class="section-card-body">
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">Productos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statCats">0</div>
+          <div class="stat-label">Categorías</div>
+        </div>
+      </div>
+
+      <!-- Upload zone -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-zone-icon">📂</div>
+        <div style="font-weight:600;margin-bottom:4px">Subir nuevo catálogo Excel</div>
+        <div class="text-sm text-muted">Arrastrá el archivo o tocá para seleccionar</div>
+        <div class="text-xs text-muted mt-sm">Compatible: .xlsx, .xls, .csv</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+      </div>
+
+      <!-- Column mapper (shown after file selected) -->
+      <div id="columnMapper">
+        <div class="divider"></div>
+        <p class="text-sm font-semi mb-md">📋 Mapeá las columnas del Excel:</p>
+        <div class="col-map-row">
+          <span class="col-map-label">Código</span>
+          <select class="form-input" id="mapCodigo"></select>
+        </div>
+        <div class="col-map-row">
+          <span class="col-map-label">Descripción *</span>
+          <select class="form-input" id="mapDescripcion"></select>
+        </div>
+        <div class="col-map-row">
+          <span class="col-map-label">Precio *</span>
+          <select class="form-input" id="mapPrecio"></select>
+        </div>
+        <div class="col-map-row">
+          <span class="col-map-label">Categoría</span>
+          <select class="form-input" id="mapCategoria"></select>
+        </div>
+        <div class="col-map-row">
+          <span class="col-map-label">Unidad</span>
+          <select class="form-input" id="mapUnidad"></select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-primary btn-block" id="btnImportExcel">✓ Importar catálogo</button>
+          <button class="btn btn-ghost" id="btnCancelImport">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div id="catalogPreview"></div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="btnLoadDefault">↩ Cargar catálogo de ejemplo</button>
+        <button class="btn btn-danger btn-sm" id="btnClearCatalog">🗑️ Borrar catálogo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Mayoristas ── -->
+  <div class="section-card mb-md" id="sectionMayoristas">
+    <div class="section-card-header">
+      <span class="icon">🏭</span>
+      <h3>Mayoristas / Perfiles</h3>
+      <button class="btn btn-ghost btn-sm" id="btnAddProfile" style="margin-left:auto">+ Agregar</button>
+    </div>
+    <div class="section-card-body" id="profileList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <!-- ── Historial ── -->
+  <div class="section-card mb-md" id="sectionHistorial">
+    <div class="section-card-header">
+      <span class="icon">📋</span>
+      <h3>Historial de Pedidos</h3>
+      <button class="btn btn-ghost btn-sm" id="btnClearHistory" style="margin-left:auto">Borrar</button>
+    </div>
+    <div class="section-card-body" style="padding:0" id="historyList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+</main>
+
+<script src="js/app.js?v=2"></script>
+<script src="js/export.js?v=2"></script>
+<script src="js/ai.js?v=2"></script>
+<script>
+// ── Service Worker Registration ────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+
+// ── Admin page logic ──────────────────────────────────────────
+let rawExcelData = [];
+let excelHeaders = [];
+
+function init() {
+  renderCatalogStats();
+  renderCatalogPreview();
+  renderProfiles();
+  renderHistory();
+}
+
+// ── Catalog stats ──────────────────────────────────────────────
+function renderCatalogStats() {
+  const cat  = APP.getCatalog();
+  const cats = [...new Set(cat.map(p => p.categoria).filter(Boolean))];
+  document.getElementById('statTotal').textContent = cat.length;
+  document.getElementById('statCats').textContent  = cats.length;
+}
+
+function renderCatalogPreview() {
+  const cat  = APP.getCatalog();
+  const el   = document.getElementById('catalogPreview');
+  if (!cat.length) { el.innerHTML = ''; return; }
+  const slice = cat.slice(0, 5);
+  el.innerHTML = `
+    <div style="margin-top:8px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+      ${slice.map(p => `
+        <div class="catalog-preview-item">
+          <div>
+            <span style="font-weight:500;font-size:.8125rem">${APP.esc(p.descripcion)}</span>
+            <span class="text-xs text-muted" style="margin-left:6px">${APP.esc(p.codigo||'')}</span>
+          </div>
+          <span class="text-success font-bold text-sm">${APP.formatCurrency(p.precio)}</span>
+        </div>
+      `).join('')}
+      ${cat.length > 5 ? `<div style="padding:8px 12px;font-size:.75rem;color:var(--text-muted);text-align:center">... y ${cat.length-5} más</div>` : ''}
+    </div>`;
+}
+
+// ── Upload zone ────────────────────────────────────────────────
+const zone  = document.getElementById('uploadZone');
+const fInput = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => fInput.click());
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+fInput.addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb   = XLSX.read(e.target.result, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!data.length) { APP.showToast('Archivo vacío', 'error'); return; }
+
+    excelHeaders = data[0].map((h, i) => ({ label: String(h || `Col${i+1}`), idx: i }));
+    rawExcelData = data.slice(1);
+
+    populateMappers();
+    document.getElementById('columnMapper').style.display = 'block';
+    zone.style.display = 'none';
+    APP.showToast(`Archivo cargado — ${rawExcelData.length} filas`, 'success');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateMappers() {
+  const mapIds = ['mapCodigo','mapDescripcion','mapPrecio','mapCategoria','mapUnidad'];
+  const optNone = '<option value="">— Ninguna —</option>';
+  const opts = excelHeaders.map(h => `<option value="${h.idx}">${APP.esc(h.label)}</option>`).join('');
+
+  mapIds.forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = optNone + opts;
+  });
+
+  // Auto-detect column names
+  const norm = s => String(s).toLowerCase().replace(/[áéíóú ]/g, c => 'aeiou '.indexOf(c) >= 0 ? 'aeiou '[' aeiou'.indexOf(c)] : c);
+  excelHeaders.forEach(h => {
+    const n = norm(h.label);
+    if (/cod/.test(n))       trySet('mapCodigo',      h.idx);
+    if (/desc|nombre|prod/.test(n)) trySet('mapDescripcion', h.idx);
+    if (/prec/.test(n))      trySet('mapPrecio',      h.idx);
+    if (/cat|rub/.test(n))   trySet('mapCategoria',   h.idx);
+    if (/uni/.test(n))       trySet('mapUnidad',       h.idx);
+  });
+}
+
+function trySet(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const opt = Array.from(el.options).find(o => o.value == val);
+  if (opt) el.value = val;
+}
+
+document.getElementById('btnImportExcel').addEventListener('click', () => {
+  const get = id => {
+    const el = document.getElementById(id); return el ? parseInt(el.value) : NaN;
+  };
+  const iDesc  = get('mapDescripcion');
+  const iPrec  = get('mapPrecio');
+  const iCod   = get('mapCodigo');
+  const iCat   = get('mapCategoria');
+  const iUni   = get('mapUnidad');
+
+  if (isNaN(iDesc)) { APP.showToast('Seleccioná la columna Descripción', 'error'); return; }
+  if (isNaN(iPrec)) { APP.showToast('Seleccioná la columna Precio', 'error'); return; }
+
+  const catalog = rawExcelData
+    .map(row => ({
+      codigo:      !isNaN(iCod) ? String(row[iCod]||'').trim()  : '',
+      descripcion: String(row[iDesc]||'').trim(),
+      precio:      parseFloat(String(row[iPrec]).replace(/[^0-9.,-]/g,'').replace(',','.')) || 0,
+      categoria:   !isNaN(iCat) ? String(row[iCat]||'').trim()  : '',
+      unidad:      !isNaN(iUni) ? String(row[iUni]||'').trim()  : '',
+    }))
+    .filter(p => p.descripcion && p.precio > 0);
+
+  if (!catalog.length) { APP.showToast('No se encontraron productos válidos', 'error'); return; }
+
+  APP.saveCatalog(catalog);
+  APP.showToast(`✓ ${catalog.length} productos importados`, 'success');
+
+  document.getElementById('columnMapper').style.display = 'none';
+  zone.style.display = 'block';
+  fInput.value = '';
+  renderCatalogStats();
+  renderCatalogPreview();
+});
+
+document.getElementById('btnCancelImport').addEventListener('click', () => {
+  document.getElementById('columnMapper').style.display = 'none';
+  zone.style.display = 'block';
+  fInput.value = '';
+});
+
+document.getElementById('btnLoadDefault').addEventListener('click', async () => {
+  const data = await APP.loadDefaultCatalog();
+  APP.showToast(`✓ Catálogo de ejemplo cargado (${data.length} productos)`, 'success');
+  renderCatalogStats();
+  renderCatalogPreview();
+});
+
+document.getElementById('btnClearCatalog').addEventListener('click', () => {
+  if (!confirm('¿Borrar el catálogo completo?')) return;
+  APP.saveCatalog([]);
+  renderCatalogStats();
+  renderCatalogPreview();
+  APP.showToast('Catálogo borrado', 'warning');
+});
+
+// ── Profiles ───────────────────────────────────────────────────
+function renderProfiles() {
+  const profiles = APP.getProfiles();
+  const active   = APP.getActiveProfile();
+  const el       = document.getElementById('profileList');
+
+  if (!profiles.length) {
+    el.innerHTML = '<p class="text-sm text-muted text-center" style="padding:16px">No hay perfiles. Tocá + Agregar para crear uno.</p>';
+    return;
+  }
+
+  el.innerHTML = profiles.map(p => `
+    <div class="profile-item ${p.id === active ? 'active' : ''}" onclick="selectProfile('${p.id}')" id="prof_${p.id}">
+      <div>
+        <div class="font-bold">${APP.esc(p.nombre)}</div>
+        ${p.email ? `<div class="text-xs text-muted">${APP.esc(p.email)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px">
+        ${p.id === active ? '<span class="badge badge-primary">Activo</span>' : ''}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editProfile('${p.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteProfile('${p.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectProfile(id) {
+  APP.setActiveProfile(id);
+  renderProfiles();
+  APP.showToast('Mayorista activo actualizado', 'success');
+}
+
+function editProfile(id) {
+  const profiles = APP.getProfiles();
+  const p = profiles.find(x => x.id === id);
+  if (!p) return;
+  const nombre = prompt('Nombre del mayorista:', p.nombre);
+  if (!nombre) return;
+  const email = prompt('Email (opcional):', p.email || '');
+  p.nombre = nombre.trim();
+  p.email  = (email || '').trim();
+  APP.saveProfiles(profiles);
+  renderProfiles();
+}
+
+function deleteProfile(id) {
+  if (!confirm('¿Eliminar este mayorista?')) return;
+  const profiles = APP.getProfiles().filter(p => p.id !== id);
+  APP.saveProfiles(profiles);
+  if (APP.getActiveProfile() === id) APP.setActiveProfile(null);
+  renderProfiles();
+}
+
+document.getElementById('btnAddProfile').addEventListener('click', () => {
+  const nombre = prompt('Nombre del mayorista:');
+  if (!nombre || !nombre.trim()) return;
+  const email = prompt('Email del mayorista (opcional):') || '';
+  const profiles = APP.getProfiles();
+  const p = { id: Date.now().toString(), nombre: nombre.trim(), email: email.trim() };
+  profiles.push(p);
+  APP.saveProfiles(profiles);
+  renderProfiles();
+  APP.showToast(`✓ "${p.nombre}" agregado`, 'success');
+});
+
+// ── History ────────────────────────────────────────────────────
+function renderHistory() {
+  const history = APP.getHistory();
+  const el      = document.getElementById('historyList');
+
+  if (!history.length) {
+    el.innerHTML = '<p class="text-sm text-muted text-center" style="padding:20px 16px">No hay pedidos guardados todavía.</p>';
+    return;
+  }
+
+  el.innerHTML = `<div style="padding:12px">` + history.slice(0, 30).map((o, idx) => `
+    <div class="history-item">
+      <div style="font-size:1.5rem">🧾</div>
+      <div class="history-item-info">
+        <div class="history-item-title">${APP.esc(o.session?.comercio || 'Sin cliente')}</div>
+        <div class="history-item-meta">${APP.esc(o.date)} · ${o.items?.length || 0} items · ${APP.esc(o.session?.vendedor||'')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="history-item-total">${APP.formatCurrency(o.total)}</span>
+        <button class="btn btn-ghost btn-sm" onclick="reExportHistory(${idx})">📤</button>
+      </div>
+    </div>
+  `).join('') + `</div>`;
+}
+
+function reExportHistory(idx) {
+  const order = APP.getHistory()[idx];
+  if (!order) return;
+  const type = prompt('Exportar como:\n1 = WhatsApp\n2 = PDF\n(1 o 2):');
+  if (type === '1') EXPORTER.sendWhatsApp(order.items, order.session);
+  else if (type === '2') EXPORTER.toPDF(order.items, order.session);
+}
+
+document.getElementById('btnClearHistory').addEventListener('click', () => {
+  if (!confirm('¿Borrar todo el historial?')) return;
+  APP.storage.remove(APP.KEYS.ORDERS_HISTORY);
+  renderHistory();
+  APP.showToast('Historial borrado', 'warning');
+});
+
+// ── AI Config ─────────────────────────────────────────────────
+function renderAIStatus() {
+  const badge = document.getElementById('aiStatusBadge');
+  if (!badge) return;
+  if (AI.isEnabled()) {
+    badge.textContent = '✨ ACTIVA';
+    badge.style.background = 'rgba(16,185,129,0.2)';
+    badge.style.color = 'var(--success)';
+    badge.style.border = '1px solid rgba(16,185,129,0.4)';
+  } else {
+    badge.textContent = 'Desactivada';
+    badge.style.background = 'rgba(100,116,139,0.15)';
+    badge.style.color = 'var(--text-muted)';
+    badge.style.border = '1px solid var(--border)';
+  }
+  const keyInput = document.getElementById('inputGeminiKey');
+  if (keyInput) {
+    keyInput.value = '';
+    keyInput.placeholder = AI.getKey() ? '(Clave guardada y activa)' : 'AIzaSy...';
+  }
+}
+
+document.getElementById('btnSaveAiKey')?.addEventListener('click', () => {
+  const k = document.getElementById('inputGeminiKey')?.value.trim();
+  if (!k || !k.startsWith('AIza')) {
+    APP.showToast('Clave inválida. Debe empezar con AIza…', 'error'); return;
+  }
+  AI.setKey(k);
+  renderAIStatus();
+  APP.showToast('✨ IA activada con Gemini', 'success');
+});
+
+document.getElementById('btnTestAiKey')?.addEventListener('click', async () => {
+  const inputVal = document.getElementById('inputGeminiKey')?.value.trim();
+  if (inputVal && inputVal.startsWith('AIza')) {
+    AI.setKey(inputVal); // Guardar si escribió una nueva
+    renderAIStatus();
+  }
+  
+  if (!AI.isEnabled()) { 
+    APP.showToast('Ingresá una clave y guardala primero', 'error'); 
+    return; 
+  }
+  APP.showToast('Probando IA…', '');
+  const result = await AI.parse('azucar chango 500g 77 unidades');
+  if (result && !result._error) {
+    APP.showToast(`✅ IA OK: ${result.cantidad}x "${result.producto}"`, 'success');
+  } else {
+    APP.showToast(`❌ Error: ${result?._error || 'Revisá la API Key'}`, 'error');
+  }
+  renderAIStatus();
+});
+
+document.getElementById('btnClearAiKey')?.addEventListener('click', () => {
+  AI.setKey('');
+  const inp = document.getElementById('inputGeminiKey');
+  if (inp) inp.value = '';
+  renderAIStatus();
+  APP.showToast('IA desactivada', 'warning');
+});
+
+// ── Start ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => { init(); renderAIStatus(); });
+
+</script>
+</body>
+</html>
