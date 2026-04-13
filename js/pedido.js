@@ -66,10 +66,11 @@ function initFuse() {
       { name: 'codigo',      weight: 0.2 },
       { name: 'categoria',   weight: 0.1 },
     ],
-    threshold: 0.45,
-    includeScore: true,
-    ignoreLocation: true,
-    minMatchCharLength: 2,
+   threshold: 0.6,
+includeScore: true,
+ignoreLocation: true,
+minMatchCharLength: 2,
+distance: 200,
   });
 }
 
@@ -176,7 +177,7 @@ function doSearch(query) {
 
   // 2. Fallback to Fuse (fuzzy) if we have very few results (handles typos like "azcr" -> "azucar")
   if (results.length < 3 && fuseInstance) {
-    const fuseRes = fuseInstance.search(query.trim(), { limit: 15 }).map(r => r.item);
+   const fuseRes = fuseInstance.search(qNorm, { limit: 20 }).map(r => r.item);
     fuseRes.forEach(item => {
       if (!results.includes(item)) results.push(item);
     });
