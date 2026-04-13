@@ -1,31 +1,25 @@
 // ============================================================
-// MAYOLISTA — Voice Engine  v1.1
-// Toggle-based voice recognition con acumulación correcta
+// MAYOLISTA — Voice Engine  v1.2
+// Toggle-based voice recognition - sin repetición de palabras
 // ============================================================
 
 class VoiceEngine {
-  /**
-   * @param {function} onResult      - called with final transcript string
-   * @param {function} onStatus      - called with (state, displayText)
-   *   state: 'idle' | 'listening' | 'paused' | 'processing' | 'interim' | 'error'
-   */
   constructor(onResult, onStatus) {
     this.onResult = onResult;
     this.onStatus = onStatus;
     this._recognition = null;
     this._state = 'idle';
-    this._accumulated = ''; // ← NUEVO: acumula texto entre reinicios
+    this._finalText = ''; // solo texto confirmado como final
     this.supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
-  // ── Lazy init ──────────────────────────────────────────────
   _init() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const rec = new SR();
     rec.continuous      = true;
     rec.interimResults  = true;
     rec.lang            = 'es-AR';
-    rec.maxAlternatives = 3;
+    rec.maxAlternatives = 1;
 
     rec.onstart = () => {
       this._state = 'listening';
@@ -33,27 +27,28 @@ class VoiceEngine {
     };
 
     rec.onresult = (evt) => {
-      let interim = '';
-      let finalText = '';
+      // Reconstruir todo desde cero en cada evento
+      let interimText = '';
+      let newFinal = '';
 
-      for (let i = evt.resultIndex; i < evt.results.length; i++) {
+      for (let i = 0; i < evt.results.length; i++) {
         const t = evt.results[i][0].transcript;
         if (evt.results[i].isFinal) {
-          finalText += t;
+          newFinal += t + ' ';
         } else {
-          interim += t;
+          interimText += t;
         }
       }
 
-      // Mostrar interim combinado con lo ya acumulado
-      if (interim) {
-        this.onStatus('interim', (this._accumulated + ' ' + interim).trim());
+      // Actualizar el texto final acumulado
+      if (newFinal.trim()) {
+        this._finalText = newFinal.trim();
       }
 
-      // Cuando hay texto final, acumularlo
-      if (finalText) {
-        this._accumulated = (this._accumulated + ' ' + finalText.trim()).trim();
-        this.onStatus('processing', this._accumulated);
+      // Mostrar interim combinado con final
+      const display = (this._finalText + ' ' + interimText).trim();
+      if (interimText) {
+        this.onStatus('interim', display);
       }
     };
 
@@ -63,32 +58,23 @@ class VoiceEngine {
         this.onStatus('error', '⚠️ Permiso de micrófono denegado');
         return;
       }
-      if (evt.error === 'no-speech') {
-        // Silencio — si hay texto acumulado, enviarlo
-        if (this._accumulated.trim()) {
-          this.onResult(this._accumulated.trim());
-          this._accumulated = '';
-          this.onStatus('listening', '🔴 Escuchando… hablá ahora');
-        }
-        return;
-      }
+      if (evt.error === 'no-speech') return;
       console.warn('[Voice] error:', evt.error);
     };
 
     rec.onend = () => {
-      // Auto-restart si sigue escuchando (el browser paró por silencio)
       if (this._state === 'listening') {
-        // Si hay texto acumulado suficiente, enviarlo antes de reiniciar
-        if (this._accumulated.trim().length > 3) {
-          this.onResult(this._accumulated.trim());
-          this._accumulated = '';
+        // Enviar lo que hay y reiniciar
+        if (this._finalText.trim()) {
+          this.onResult(this._finalText.trim());
+          this.onStatus('processing', this._finalText.trim());
+          this._finalText = '';
         }
         try { rec.start(); } catch (e) {}
       } else {
-        // Enviar lo que quedó acumulado al parar/pausar
-        if (this._accumulated.trim()) {
-          this.onResult(this._accumulated.trim());
-          this._accumulated = '';
+        if (this._finalText.trim()) {
+          this.onResult(this._finalText.trim());
+          this._finalText = '';
         }
         this.onStatus('idle', 'Presioná el micrófono para hablar');
       }
@@ -97,14 +83,13 @@ class VoiceEngine {
     this._recognition = rec;
   }
 
-  // ── Public API ─────────────────────────────────────────────
   start() {
     if (!this.supported) {
       this.onStatus('error', '⚠️ Micrófono no disponible en este navegador');
       return;
     }
     if (!this._recognition) this._init();
-    this._accumulated = ''; // limpiar al iniciar nueva sesión
+    this._finalText = '';
     this._state = 'listening';
     try { this._recognition.start(); } catch (e) {}
   }
@@ -124,15 +109,14 @@ class VoiceEngine {
 
   stop() {
     this._state = 'idle';
-    if (this._accumulated.trim()) {
-      this.onResult(this._accumulated.trim());
-      this._accumulated = '';
+    if (this._finalText.trim()) {
+      this.onResult(this._finalText.trim());
+      this._finalText = '';
     }
     try { this._recognition.stop(); } catch (e) {}
     this.onStatus('idle', 'Presioná el micrófono para hablar');
   }
 
-  /** Cicla: idle→listening, listening→paused, paused→listening */
   toggle() {
     if (this._state === 'idle')      return this.start();
     if (this._state === 'listening') return this.pause();
