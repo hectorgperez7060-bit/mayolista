@@ -1,6 +1,6 @@
 // ============================================================
-// MAYOLISTA — Voice Engine  v1.0
-// Toggle-based voice recognition with pause/resume support
+// MAYOLISTA — Voice Engine  v1.1
+// Toggle-based voice recognition con acumulación correcta
 // ============================================================
 
 class VoiceEngine {
@@ -13,7 +13,8 @@ class VoiceEngine {
     this.onResult = onResult;
     this.onStatus = onStatus;
     this._recognition = null;
-    this._state = 'idle'; // idle | listening | paused
+    this._state = 'idle';
+    this._accumulated = ''; // ← NUEVO: acumula texto entre reinicios
     this.supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
@@ -34,15 +35,25 @@ class VoiceEngine {
     rec.onresult = (evt) => {
       let interim = '';
       let finalText = '';
+
       for (let i = evt.resultIndex; i < evt.results.length; i++) {
         const t = evt.results[i][0].transcript;
-        if (evt.results[i].isFinal) finalText += t;
-        else interim += t;
+        if (evt.results[i].isFinal) {
+          finalText += t;
+        } else {
+          interim += t;
+        }
       }
-      if (interim) this.onStatus('interim', interim);
+
+      // Mostrar interim combinado con lo ya acumulado
+      if (interim) {
+        this.onStatus('interim', (this._accumulated + ' ' + interim).trim());
+      }
+
+      // Cuando hay texto final, acumularlo
       if (finalText) {
-        this.onStatus('processing', finalText);
-        this.onResult(finalText.trim());
+        this._accumulated = (this._accumulated + ' ' + finalText.trim()).trim();
+        this.onStatus('processing', this._accumulated);
       }
     };
 
@@ -53,17 +64,32 @@ class VoiceEngine {
         return;
       }
       if (evt.error === 'no-speech') {
-        // keep going
+        // Silencio — si hay texto acumulado, enviarlo
+        if (this._accumulated.trim()) {
+          this.onResult(this._accumulated.trim());
+          this._accumulated = '';
+          this.onStatus('listening', '🔴 Escuchando… hablá ahora');
+        }
         return;
       }
       console.warn('[Voice] error:', evt.error);
     };
 
     rec.onend = () => {
-      // Auto-restart if still in listening state (browser stopped on silence)
+      // Auto-restart si sigue escuchando (el browser paró por silencio)
       if (this._state === 'listening') {
-        try { rec.start(); } catch (e) { /* already started */ }
+        // Si hay texto acumulado suficiente, enviarlo antes de reiniciar
+        if (this._accumulated.trim().length > 3) {
+          this.onResult(this._accumulated.trim());
+          this._accumulated = '';
+        }
+        try { rec.start(); } catch (e) {}
       } else {
+        // Enviar lo que quedó acumulado al parar/pausar
+        if (this._accumulated.trim()) {
+          this.onResult(this._accumulated.trim());
+          this._accumulated = '';
+        }
         this.onStatus('idle', 'Presioná el micrófono para hablar');
       }
     };
@@ -78,8 +104,9 @@ class VoiceEngine {
       return;
     }
     if (!this._recognition) this._init();
+    this._accumulated = ''; // limpiar al iniciar nueva sesión
     this._state = 'listening';
-    try { this._recognition.start(); } catch (e) { /* already running */ }
+    try { this._recognition.start(); } catch (e) {}
   }
 
   pause() {
@@ -97,6 +124,10 @@ class VoiceEngine {
 
   stop() {
     this._state = 'idle';
+    if (this._accumulated.trim()) {
+      this.onResult(this._accumulated.trim());
+      this._accumulated = '';
+    }
     try { this._recognition.stop(); } catch (e) {}
     this.onStatus('idle', 'Presioná el micrófono para hablar');
   }
