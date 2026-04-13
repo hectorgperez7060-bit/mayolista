@@ -16,7 +16,7 @@ class VoiceEngine {
   _init() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const rec = new SR();
-    rec.continuous      = true;
+    rec.continuous      = false;
     rec.interimResults  = true;
     rec.lang            = 'es-AR';
     rec.maxAlternatives = 1;
