@@ -1,0 +1,25 @@
+{
+  "name": "Mayolista",
+  "short_name": "Mayolista",
+  "description": "Pedidos mayoristas, rápido y sin papeles",
+  "start_url": "/mayolista/",
+  "scope": "/mayolista/",
+  "display": "standalone",
+  "background_color": "#0d0d1a",
+  "theme_color": "#863bff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/mayolista/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/mayolista/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
