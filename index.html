@@ -20,7 +20,19 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register(new URL('/mayolista/sw.js', location.href).pathname);
+          navigator.serviceWorker.register(new URL('/mayolista/sw.js', location.href).pathname)
+            .then(reg => {
+              reg.addEventListener('updatefound', () => {
+                const sw = reg.installing;
+                sw.addEventListener('statechange', () => {
+                  if (sw.state === 'activated') window.location.reload();
+                });
+              });
+            });
+          let reloading = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!reloading) { reloading = true; window.location.reload(); }
+          });
         });
       }
     </script>
