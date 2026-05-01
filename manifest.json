@@ -10,21 +10,21 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/mayolista/icon.svg",
+      "src": "/mayolista/icon.jpg",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/mayolista/icon.svg",
+      "src": "/mayolista/icon.jpg",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/mayolista/icon.svg",
+      "src": "/mayolista/icon.jpg",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ]
