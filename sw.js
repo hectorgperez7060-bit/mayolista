@@ -1,4 +1,4 @@
-// v5
+// v6
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
@@ -11,7 +11,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Navigation requests (HTML): always bypass HTTP cache
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request, { cache: 'no-store' })
@@ -19,6 +18,9 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // Assets: network first, fallback to cache
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });
