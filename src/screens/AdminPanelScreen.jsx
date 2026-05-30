@@ -832,7 +832,7 @@ export default function AdminPanelScreen({ onNavigate }) {
                       <div style={{
                         position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
                         background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-                        borderRadius: '10px', marginTop: '4px', overflow: 'hidden'
+                        borderRadius: '10px', marginTop: '4px', maxHeight: '220px', overflowY: 'auto'
                       }}>
                         {sugeridos.map(p => (
                           <div key={p.id}
