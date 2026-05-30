@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { PlusCircle, UserPlus, Users, Tag, ClipboardList, ChevronRight } from 'lucide-react';
+import { UserPlus, Users, Tag, ClipboardList, ChevronRight } from 'lucide-react';
 
 const ALL_ACTIONS = [
   {
@@ -45,7 +45,6 @@ const ALL_ACTIONS = [
 ];
 
 export default function HomeScreen({ onNavigate }) {
-  const currentOrder = useStore(state => state.currentOrder);
   const rol = useStore(state => state.rol);
   const isAdmin = rol === 'admin';
   const ACTIONS = ALL_ACTIONS.filter(a => !a.adminOnly || isAdmin);
@@ -54,30 +53,7 @@ export default function HomeScreen({ onNavigate }) {
     <div className="p-4">
       <header className="mb-6 mt-2">
         <h1 className="text-2xl text-primary">App Mayorista</h1>
-        <p className="text-muted">Gestión rápida de pedidos</p>
       </header>
-
-      {/* Pedido actual */}
-      <div className="glass-panel p-4 mb-6">
-        <h2 className="text-lg mb-2">Pedido Actual</h2>
-        {currentOrder.client ? (
-          <div>
-            <p><strong>Cliente:</strong> {currentOrder.client.name}</p>
-            <p><strong>Ítems:</strong> {currentOrder.items.reduce((acc, i) => acc + i.quantity, 0)}</p>
-            <p className="text-2xl mt-2 text-primary">${currentOrder.total.toLocaleString('es-AR')}</p>
-            <button className="btn btn-primary w-full mt-4" onClick={() => onNavigate('order')}>
-              Continuar Pedido
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p className="text-muted mb-4">No hay pedido activo.</p>
-            <button className="btn btn-primary w-full" onClick={() => onNavigate('clients')}>
-              <PlusCircle size={20} /> Nuevo Pedido
-            </button>
-          </div>
-        )}
-      </div>
 
       {/* Acciones principales */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
