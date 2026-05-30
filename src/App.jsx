@@ -369,10 +369,7 @@ export default function App() {
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <SidebarButton icon={<Home size={20} />} label="Inicio" active={currentScreen === 'home'} onClick={() => setCurrentScreen('home')} />
           <SidebarButton icon={<Users size={20} />} label="Clientes" active={currentScreen === 'clients'} onClick={() => setCurrentScreen('clients')} />
-          <SidebarButton icon={<Search size={20} />} label="Procesar" active={currentScreen === 'order'} onClick={() => {
-            if (!order.client) { afterClientSelectRef.current = 'order'; setCurrentScreen('clients'); }
-            else setCurrentScreen('order');
-          }} />
+          <SidebarButton icon={<Search size={20} />} label="Procesar" active={currentScreen === 'order'} onClick={() => setCurrentScreen('order')} />
           <SidebarButton icon={<ShoppingCart size={20} />} label="Resumen" active={currentScreen === 'summary'} onClick={() => setCurrentScreen('summary')} badge={itemsCount} />
           {rol === 'admin' && (
             <SidebarButton icon={<LayoutGrid size={20} />} label="Empresa" active={currentScreen === 'adminPanel'} onClick={() => setCurrentScreen('adminPanel')} />
@@ -409,10 +406,7 @@ export default function App() {
               <>
                 <NavButton icon={<Home size={22} />}          label="Inicio"   active={currentScreen === 'home'}       onClick={() => setCurrentScreen('home')} />
                 <NavButton icon={<Users size={22} />}         label="Clientes" active={currentScreen === 'clients'}    onClick={() => setCurrentScreen('clients')} />
-                <NavButton icon={<Search size={22} />}        label="Procesar" active={currentScreen === 'order'}      onClick={() => {
-                  if (!order.client) { afterClientSelectRef.current = 'order'; setCurrentScreen('clients'); }
-                  else setCurrentScreen('order');
-                }} />
+                <NavButton icon={<Search size={22} />}        label="Procesar" active={currentScreen === 'order'}      onClick={() => setCurrentScreen('order')} />
                 <NavButton icon={<ShoppingCart size={22} />}  label="Resumen"  active={currentScreen === 'summary'}   onClick={() => setCurrentScreen('summary')} badge={itemsCount} />
                 {rol === 'admin' && (
                   <NavButton icon={<LayoutGrid size={22} />}  label="Empresa"  active={currentScreen === 'adminPanel'} onClick={() => setCurrentScreen('adminPanel')} />

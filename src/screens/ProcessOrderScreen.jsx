@@ -175,10 +175,15 @@ export default function ProcessOrderScreen({ onNavigate, onBack }) {
     setParsedLines(updated);
   };
 
-  const updateLineQty = (lineId, newQty) => {
-    if (newQty < 0) newQty = 0;
+  const updateLineQty = (lineId, rawValue) => {
     setParsedLines(prev => prev.map(line =>
-      line.id === lineId ? { ...line, qty: newQty } : line
+      line.id === lineId ? { ...line, qty: rawValue === '' ? '' : Math.max(0, parseFloat(rawValue) || 0) } : line
+    ));
+  };
+
+  const commitLineQty = (lineId) => {
+    setParsedLines(prev => prev.map(line =>
+      line.id === lineId ? { ...line, qty: parseFloat(line.qty) || 1 } : line
     ));
   };
 
@@ -349,7 +354,8 @@ export default function ProcessOrderScreen({ onNavigate, onBack }) {
                             min="0"
                             step="any"
                             value={line.qty}
-                            onChange={(e) => updateLineQty(line.id, parseFloat(e.target.value) || 1)}
+                            onChange={(e) => updateLineQty(line.id, e.target.value)}
+                            onBlur={() => commitLineQty(line.id)}
                             className="input-glass text-center"
                             style={{ width: '60px', padding: '0.2rem', fontSize: '0.9rem' }}
                           />
