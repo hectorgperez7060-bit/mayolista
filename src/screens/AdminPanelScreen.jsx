@@ -736,7 +736,7 @@ export default function AdminPanelScreen({ onNavigate }) {
                         <span style={{ color: 'var(--text-main)' }}>{item.product?.name}</span>
                         <span style={{ textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
                         <span style={{ textAlign: 'center', fontSize: '0.72rem', color: item.discount ? 'hsl(150,80%,50%)' : 'var(--text-muted)' }}>
-                          {item.discount ? (item.discount.type === 'percent' ? `-${item.discount.value}%` : `${item.discount.value} bon.`) : '—'}
+                          {item.discount ? (item.discount.type === 'percent' ? `-${item.discount.value}%` : `${calcFreeItems(item.discount, item.quantity)} bon.`) : '—'}
                         </span>
                         <span style={{ textAlign: 'right', color: 'var(--text-muted)' }}>${fmtMoney(item.product?.price || 0)}</span>
                         <span style={{ textAlign: 'right', fontWeight: 700 }}>${fmtMoney(item.subtotal)}</span>
