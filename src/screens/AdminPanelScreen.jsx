@@ -1,6 +1,15 @@
 import { useState, useEffect, Component } from 'react';
 import { searchProducts } from '../utils/search';
 
+function calcFreeItems(d, qty) {
+  if (!d || d.type !== 'bonus') return 0;
+  return d.condicion ? Math.floor(qty / d.condicion) * d.value : d.value;
+}
+function bonLabel(i) {
+  const free = calcFreeItems(i.discount, i.quantity);
+  return `-${free} bon.`;
+}
+
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
@@ -45,7 +54,7 @@ function buildOrderText(p) {
   t += '\n';
   (p.items || []).forEach(i => {
     const disc = i.discount
-      ? (i.discount.type === 'percent' ? ` (-${i.discount.value}%)` : ` (-${i.discount.value} bon.)`)
+      ? (i.discount.type === 'percent' ? ` (-${i.discount.value}%)` : ` (${bonLabel(i)})`)
       : '';
     t += `• ${i.quantity}x ${i.product?.name}${disc} — $${fmtMoney(i.subtotal)}\n`;
   });
@@ -166,7 +175,7 @@ async function exportPedidoPDF(p, mayorista) {
     : [['Código','Producto','Cant.','Precio Unit.','Subtotal']];
   const body = (p.items || []).map(i => {
     const row = [i.product?.code || '', i.product?.name || '', String(i.quantity)];
-    if (hasDisc) row.push(i.discount ? (i.discount.type==='percent' ? `-${i.discount.value}%` : `-${i.discount.value} bon.`) : '—');
+    if (hasDisc) row.push(i.discount ? (i.discount.type==='percent' ? `-${i.discount.value}%` : bonLabel(i)) : '—');
     row.push(`$${fmtMoney(i.product?.price || 0)}`, `$${fmtMoney(i.subtotal || 0)}`);
     return row;
   });
@@ -222,7 +231,7 @@ function exportPedidoExcel(p) {
     : ['Código','Producto','Cantidad','Precio Unit.','Subtotal'];
   const body = (p.items || []).map(i => {
     const row = [i.product?.code||'', i.product?.name||'', i.quantity];
-    if (hasDisc) row.push(i.discount ? (i.discount.type==='percent' ? `-${i.discount.value}%` : `-${i.discount.value} bon.`) : '');
+    if (hasDisc) row.push(i.discount ? (i.discount.type==='percent' ? `-${i.discount.value}%` : bonLabel(i)) : '');
     row.push(i.product?.price||0, i.subtotal||0);
     return row;
   });
