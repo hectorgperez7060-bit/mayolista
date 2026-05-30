@@ -5,7 +5,12 @@ import { mockProducts, mockClients } from './data';
 function calcSubtotal(price, qty, discount) {
   if (!discount || !discount.value) return price * qty;
   if (discount.type === 'percent') return price * qty * (1 - discount.value / 100);
-  if (discount.type === 'bonus')   return price * Math.max(0, qty - discount.value);
+  if (discount.type === 'bonus') {
+    const freeItems = discount.condicion
+      ? Math.floor(qty / discount.condicion) * discount.value
+      : discount.value;
+    return price * Math.max(0, qty - freeItems);
+  }
   return price * qty;
 }
 
@@ -114,11 +119,11 @@ export const useStore = create(
         return { currentOrder: { ...state.currentOrder, items, total } };
       }),
 
-      setItemDiscount: (productId, type, value) => set((state) => {
+      setItemDiscount: (productId, type, value, condicion = null) => set((state) => {
         const items = [...state.currentOrder.items];
         const idx = items.findIndex(i => i.product.id === productId);
         if (idx < 0) return state;
-        const discount = (type && value > 0) ? { type, value } : null;
+        const discount = (type && value > 0) ? { type, value, ...(condicion ? { condicion } : {}) } : null;
         items[idx] = { ...items[idx], discount, subtotal: calcSubtotal(items[idx].product.price, items[idx].quantity, discount) };
         const total = items.reduce((sum, item) => sum + item.subtotal, 0);
         return { currentOrder: { ...state.currentOrder, items, total } };

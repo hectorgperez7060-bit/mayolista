@@ -75,7 +75,7 @@ export default function ClienteHomeScreen({ onNavigate }) {
       if (oferta.condicionTipo === 'percent_qty') {
         setItemDiscount(product.id, 'percent', oferta.condicionValor);
       } else if (oferta.condicionTipo === 'bonus_qty') {
-        setItemDiscount(product.id, 'bonus', oferta.condicionValor);
+        setItemDiscount(product.id, 'bonus', oferta.condicionValor, oferta.condicionCantidad);
       }
     }
     setAgregados(a => ({ ...a, [oferta.id]: true }));

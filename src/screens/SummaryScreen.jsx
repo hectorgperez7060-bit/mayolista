@@ -213,8 +213,8 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
             setItemDiscount(item.product.id, 'percent', oferta.condicionValor);
           }
         } else if (oferta.condicionTipo === 'bonus_qty') {
-          if (!item.discount || item.discount.type !== 'bonus' || item.discount.value !== oferta.condicionValor) {
-            setItemDiscount(item.product.id, 'bonus', oferta.condicionValor);
+          if (!item.discount || item.discount.type !== 'bonus' || item.discount.value !== oferta.condicionValor || item.discount.condicion !== oferta.condicionCantidad) {
+            setItemDiscount(item.product.id, 'bonus', oferta.condicionValor, oferta.condicionCantidad);
           }
         }
       } else {
