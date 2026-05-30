@@ -812,7 +812,7 @@ export default function AdminPanelScreen({ onNavigate }) {
           {ofertaForm && (() => {
             const busqueda = ofertaForm._busqueda || '';
             const sugeridos = busqueda.length >= 2
-              ? searchProducts(products, busqueda).slice(0, 6)
+              ? searchProducts(products, busqueda).slice(0, 15)
               : [];
             const productoSeleccionado = !!ofertaForm.productId;
             return (
@@ -829,11 +829,14 @@ export default function AdminPanelScreen({ onNavigate }) {
                       style={{ fontSize: '0.9rem', padding: '0.65rem', width: '100%' }}
                       autoFocus />
                     {sugeridos.length > 0 && (
-                      <div style={{
-                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                        background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-                        borderRadius: '10px', marginTop: '4px', maxHeight: '220px', overflowY: 'auto'
-                      }}>
+                      <div
+                        onTouchStart={e => e.stopPropagation()}
+                        style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                          background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
+                          borderRadius: '10px', marginTop: '4px', maxHeight: '260px', overflowY: 'auto',
+                          WebkitOverflowScrolling: 'touch'
+                        }}>
                         {sugeridos.map(p => (
                           <div key={p.id}
                             onClick={() => setOfertaForm(f => ({ ...f, _busqueda: p.name, productId: p.id, productCode: p.code || '', productName: p.name, productPrice: p.price || '' }))}
