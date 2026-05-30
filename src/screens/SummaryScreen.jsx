@@ -12,9 +12,15 @@ function fmtQty(q) {
 function fmtMoney(n) {
   return n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
 }
-function discLabel(d) {
+function calcFreeItems(d, qty) {
+  if (!d || d.type !== 'bonus') return 0;
+  return d.condicion ? Math.floor(qty / d.condicion) * d.value : d.value;
+}
+function discLabel(d, qty) {
   if (!d) return '';
-  return d.type === 'percent' ? `-${d.value}%` : `-${fmtQty(d.value)} bon.`;
+  if (d.type === 'percent') return `-${d.value}%`;
+  const free = calcFreeItems(d, qty);
+  return `-${fmtQty(free)} bon.`;
 }
 function finalTotal(subtotal, orderDiscount) {
   return orderDiscount ? subtotal * (1 - orderDiscount / 100) : subtotal;
@@ -26,7 +32,7 @@ function buildText(client, items, subtotal, orderDiscount) {
   if (client.address) t += `📍 ${client.address}\n`;
   t += `📅 ${new Date().toLocaleDateString('es-AR')}\n\n`;
   items.forEach(i => {
-    const disc = i.discount ? ` (${discLabel(i.discount)})` : '';
+    const disc = i.discount ? ` (${discLabel(i.discount, i.quantity)})` : '';
     t += `• ${fmtQty(i.quantity)}x ${i.product.name}${disc} — $${fmtMoney(i.subtotal)}\n`;
   });
   if (orderDiscount) {
@@ -450,7 +456,10 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
                   }}>
                     {isPercent
                       ? `${item.discount.value}% de descuento`
-                      : `Bonif. ${fmtQty(item.discount.value)} u. → pagás ${fmtQty(item.quantity - item.discount.value)}`}
+                      : (() => {
+                          const free = calcFreeItems(item.discount, item.quantity);
+                          return `Bonif. ${fmtQty(free)} u. → pagás ${fmtQty(item.quantity - free)}`;
+                        })()}
                   </span>
                   {!readonlyDiscounts && (
                     <button onClick={clearDiscount} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1 }}>
