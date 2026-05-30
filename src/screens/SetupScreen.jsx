@@ -373,9 +373,19 @@ export default function SetupScreen() {
           <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem', wordBreak: 'break-all' }}>
             {pendingEmail}
           </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '300px', margin: '0 auto 0.75rem' }}>
             Hacé click en el enlace de verificación para activar tu cuenta, luego volvé aquí.
           </p>
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '0.5rem',
+            background: 'hsla(35,100%,50%,0.1)', border: '1px solid hsla(35,100%,50%,0.3)',
+            borderRadius: '12px', padding: '0.75rem 1rem', maxWidth: '320px', margin: '0 auto'
+          }}>
+            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
+            <p style={{ fontSize: '0.82rem', color: 'hsl(35,100%,65%)', lineHeight: 1.5 }}>
+              Si no ves el correo, <strong>revisá tu carpeta de Spam o Correo no deseado</strong> — a veces llega ahí.
+            </p>
+          </div>
         </div>
 
         {error && (
