@@ -192,6 +192,8 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
   const vendedorNombre   = useStore(s => s.vendedorNombre);
   const codigoDescuentoAplicado = useStore(s => s.codigoDescuentoAplicado);
   const ofertas                 = useStore(s => s.ofertas);
+  const clients                 = useStore(s => s.clients);
+  const clearOrder              = useStore(s => s.clearOrder);
 
   const [saved, setSaved]         = useState(false);
   const [sharing, setSharing]     = useState(false);
@@ -322,11 +324,14 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
     onNavigate('home');
   };
 
-  if (!client || items.length === 0) {
+  const clienteValido = client && (rol === 'cliente' || clients.some(c => c.id === client.id));
+
+  if (!clienteValido || items.length === 0) {
+    if (client && !clienteValido) clearOrder();
     return (
       <div className="p-4 flex-center flex-col mt-10" style={{ minHeight: '60vh' }}>
         <h2 className="text-xl mb-4 text-center">El pedido está vacío</h2>
-        <button className="btn btn-primary" onClick={() => onNavigate(client ? 'order' : 'clients')}>
+        <button className="btn btn-primary" onClick={() => onNavigate('clients')}>
           Armar Pedido
         </button>
       </div>

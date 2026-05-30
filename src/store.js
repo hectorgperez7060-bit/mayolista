@@ -29,7 +29,7 @@ export const useStore = create(
       vendedorNombre:     null,
       vendedorSessionId:  null,
       setEmpresaInfo:  (info) => set(info),
-      clearEmpresaInfo: () => set({ empresaId: null, empresaCodigo: null, rol: null, vendedorId: null, vendedorNombre: null, vendedorSessionId: null, clienteInfo: null, codigoDescuentoAplicado: null }),
+      clearEmpresaInfo: () => set({ empresaId: null, empresaCodigo: null, rol: null, vendedorId: null, vendedorNombre: null, vendedorSessionId: null, clienteInfo: null, codigoDescuentoAplicado: null, currentOrder: { client: null, items: [], total: 0, orderDiscount: null, metodoEntrada: null } }),
 
       products: mockProducts,
       clients: mockClients,
