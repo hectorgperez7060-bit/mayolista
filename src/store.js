@@ -223,7 +223,7 @@ export const useStore = create(
       }))
     }),
     {
-      name: 'mayorista-storage',
+      name: 'mayorista-storage-prod',
     }
   )
 );

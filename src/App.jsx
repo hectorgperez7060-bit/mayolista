@@ -1,5 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
-import { Home, Users, Search, ShoppingCart, Share2, Copy, Check, X, QrCode, Settings, LayoutGrid, History } from 'lucide-react';
+import { Home, Users, Search, ShoppingCart, Share2, Copy, Check, X, QrCode, Settings, LayoutGrid, History, Sun, Moon, List } from 'lucide-react';
+
+/* ── Theme management ───────────────────────────────────── */
+function getInitialTheme() {
+  try {
+    const saved = localStorage.getItem('mayolista-theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {}
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'light') {
+    root.setAttribute('data-theme', 'light');
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  try { localStorage.setItem('mayolista-theme', theme); } catch {}
+}
+
+// Apply theme as early as possible (before first render)
+applyTheme(getInitialTheme());
 import HomeScreen from './screens/HomeScreen';
 import ClientsScreen from './screens/ClientsScreen';
 import HistoryScreen from './screens/HistoryScreen';
@@ -12,6 +34,7 @@ import IntroScreen from './screens/IntroScreen';
 import SetupScreen from './screens/SetupScreen';
 import AdminPanelScreen from './screens/AdminPanelScreen';
 import ClienteHomeScreen from './screens/ClienteHomeScreen';
+import ListaScreen from './screens/ListaScreen';
 import { useStore } from './store';
 import { auth, getDeviceId, getProductos, getEmpresaData, updateLastSeen, listenVendedorBlocked, listenVendedorSession, listenAdminSession, refreshAdminSession, listenClientes, addClientToFirebase, listenProductos, registrarSesionInicio, registrarSesionFin, listenOfertas } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -30,11 +53,18 @@ function AppLogo({ size = 32 }) {
 }
 
 const APP_URL = 'https://hectorgperez7060-bit.github.io/mayolista/';
-const QR_URL  = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(APP_URL)}&color=863bff&bgcolor=0d0d1a&margin=10`;
+const QR_URL  = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(APP_URL)}&color=5533cc&bgcolor=ffffff&margin=10`;
 
 export default function App() {
+  const [theme, setTheme] = useState(getInitialTheme);
   const [currentScreen, setCurrentScreen] = useState('home');
   const [screenHistory, setScreenHistory] = useState([]);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    applyTheme(next);
+  };
   const afterClientSelectRef             = useRef('order');
 
   const navigate = (screen) => {
@@ -309,6 +339,7 @@ export default function App() {
     if (rol === 'cliente') {
       switch (currentScreen) {
         case 'home':    return <ClienteHomeScreen onNavigate={navigate} onBack={goBack} />;
+        case 'lista':   return <ListaScreen onNavigate={navigate} onBack={goBack} />;
         case 'order':   return <ProcessOrderScreen onNavigate={navigate} onBack={goBack} readonlyDiscounts />;
         case 'summary': return <SummaryScreen onNavigate={navigate} onBack={goBack} readonlyDiscounts />;
         case 'history': return <HistoryScreen onNavigate={navigate} onBack={goBack} />;
@@ -376,14 +407,17 @@ export default function App() {
           )}
         </div>
         <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => setCurrentScreen('settings')} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-glass)', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Settings size={20} /></button>
-          <button onClick={() => setShowShare(true)} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-glass)', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Share2 size={20} /></button>
+          <button onClick={() => setCurrentScreen('settings')} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-glass)', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} title="Configuración"><Settings size={20} /></button>
+          <button onClick={toggleTheme} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-glass)', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button onClick={() => setShowShare(true)} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-surface-glass)', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }} title="Compartir"><Share2 size={20} /></button>
         </div>
       </aside>
 
       <div className="main-content">
         <div className="mobile-only">
-          <AppHeader onShare={() => setShowShare(true)} onSettings={() => setCurrentScreen('settings')} syncing={syncing} />
+          <AppHeader onShare={() => setShowShare(true)} onSettings={() => setCurrentScreen('settings')} syncing={syncing} theme={theme} onToggleTheme={toggleTheme} />
         </div>
         
         {renderScreen()}
@@ -392,12 +426,16 @@ export default function App() {
           position: 'fixed', bottom: 0, left: 0, right: 0,
           maxWidth: '600px', margin: '0 auto',
           borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-          zIndex: 50
+          borderBottom: 'none',
+          zIndex: 50,
+          height: 'var(--nav-h)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
           <div className="flex-between p-2">
             {rol === 'cliente' ? (
               <>
                 <NavButton icon={<Home size={22} />}         label="Inicio"   active={currentScreen === 'home'}    onClick={() => setCurrentScreen('home')} />
+                <NavButton icon={<List size={22} />}         label="Lista"    active={currentScreen === 'lista'}   onClick={() => setCurrentScreen('lista')} />
                 <NavButton icon={<Search size={22} />}       label="Pedido"   active={currentScreen === 'order'}   onClick={() => setCurrentScreen('order')} />
                 <NavButton icon={<ShoppingCart size={22} />} label="Resumen"  active={currentScreen === 'summary'} onClick={() => setCurrentScreen('summary')} badge={itemsCount} />
                 <NavButton icon={<History size={22} />}      label="Historial" active={currentScreen === 'history'} onClick={() => setCurrentScreen('history')} />
@@ -425,16 +463,18 @@ export default function App() {
 function SidebarButton({ icon, label, active, onClick, badge }) {
   return (
     <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.85rem 1rem',
-      background: active ? 'hsla(240, 100%, 65%, 0.1)' : 'transparent',
-      border: 'none', borderRadius: '12px', cursor: 'pointer',
-      color: active ? 'var(--primary)' : 'var(--text-main)',
-      transition: 'var(--transition)', position: 'relative', textAlign: 'left'
+      display: 'flex', alignItems: 'center', gap: '0.7rem', width: '100%',
+      padding: '0.72rem 0.85rem',
+      background: active ? 'var(--primary-dim)' : 'transparent',
+      border: active ? '1px solid var(--primary-border)' : '1px solid transparent',
+      borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+      color: active ? 'var(--primary)' : 'var(--text-muted)',
+      transition: 'var(--transition)', position: 'relative', textAlign: 'left',
     }}>
       {icon}
-      <span style={{ fontSize: '0.95rem', fontWeight: active ? '600' : '500' }}>{label}</span>
+      <span style={{ fontSize: '0.9rem', fontWeight: active ? '700' : '500' }}>{label}</span>
       {badge > 0 && (
-        <span className="flex-center" style={{ marginLeft: 'auto', background: 'var(--danger)', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+        <span className="flex-center" style={{ marginLeft: 'auto', background: 'var(--danger)', color: '#fff', padding: '1px 7px', borderRadius: 'var(--radius-pill)', fontSize: '0.7rem', fontWeight: 'bold' }}>
           {badge}
         </span>
       )}
@@ -442,31 +482,41 @@ function SidebarButton({ icon, label, active, onClick, badge }) {
   );
 }
 
-function AppHeader({ onShare, onSettings, syncing }) {
+function AppHeader({ onShare, onSettings, syncing, theme, onToggleTheme }) {
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-      maxWidth: '600px', margin: '0 auto', height: '44px',
+      maxWidth: '600px', margin: '0 auto', height: 'var(--top-h)',
       background: 'var(--bg-surface)',
       borderBottom: '1px solid var(--border-color)',
+      backdropFilter: 'var(--glass-blur)',
+      WebkitBackdropFilter: 'var(--glass-blur)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 0.75rem'
+      padding: '0 0.75rem',
+      transition: 'background 0.25s ease, border-color 0.25s ease'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <AppLogo size={30} />
-        <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>Mayolista</span>
+        <AppLogo size={28} />
+        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Mayolista</span>
         {syncing && (
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '2px' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: '2px' }}>
             sincronizando...
           </span>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+        <button
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem', display: 'flex', alignItems: 'center', borderRadius: '8px', transition: 'var(--transition)' }}
+        >
+          {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+        </button>
         <button onClick={onSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem', display: 'flex', alignItems: 'center', borderRadius: '8px' }}>
-          <Settings size={20} />
+          <Settings size={19} />
         </button>
         <button onClick={onShare} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.5rem', display: 'flex', alignItems: 'center', borderRadius: '8px' }}>
-          <Share2 size={20} />
+          <Share2 size={19} />
         </button>
       </div>
     </div>
@@ -513,7 +563,7 @@ function ShareModal({ onClose }) {
             <QrCode size={18} /> {showQR ? 'Ocultar QR' : 'Mostrar código QR'}
           </button>
           {showQR && (
-            <div style={{ textAlign: 'center', padding: '1rem', background: '#0d0d1a', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+            <div style={{ textAlign: 'center', padding: '1rem', background: 'var(--bg-surface-2)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
               <img src={QR_URL} alt="QR Mayolista" draggable={false} onContextMenu={e => e.preventDefault()} style={{ width: '180px', height: '180px', borderRadius: '8px', pointerEvents: 'none' }} />
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.5rem' }}>Escaneá para abrir en otro celular</p>
             </div>
@@ -527,11 +577,18 @@ function ShareModal({ onClose }) {
 
 function NavButton({ icon, label, active, onClick, badge }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '0.5rem', background: 'transparent', border: 'none', position: 'relative', color: active ? 'var(--primary)' : 'var(--text-muted)', transition: 'var(--transition)' }}>
-      {icon}
-      <span style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: active ? '600' : '400' }}>{label}</span>
+    <button onClick={onClick} className={`nav-btn${active ? ' active' : ''}`}>
+      <div className="nav-btn-pill">
+        {icon}
+      </div>
+      <span style={{ fontSize: '0.62rem', marginTop: '2px', fontWeight: active ? '700' : '500', letterSpacing: '0.01em' }}>{label}</span>
       {badge > 0 && (
-        <span className="flex-center" style={{ position: 'absolute', top: 0, right: '10%', background: 'var(--danger)', color: '#fff', width: '18px', height: '18px', borderRadius: '50%', fontSize: '0.65rem', fontWeight: 'bold' }}>
+        <span className="flex-center" style={{
+          position: 'absolute', top: '3px', right: 'calc(50% - 22px)',
+          background: 'var(--danger)', color: '#fff',
+          width: '17px', height: '17px', borderRadius: '50%',
+          fontSize: '0.62rem', fontWeight: 'bold',
+        }}>
           {badge}
         </span>
       )}

@@ -130,6 +130,7 @@ export async function registerAdmin(email, password, mayorista, products) {
       cuit: mayorista.cuit || '',
       email: email,
       telefono: mayorista.telefono || '',
+      direccion: mayorista.direccion || '',
       condicionIVA: mayorista.condicionIVA || '',
       logo: localStorage.getItem('mayorista-logo') || '',
       codigo: codigo,
@@ -500,11 +501,36 @@ export async function markOrderSeen(empresaId, ordenId) {
   });
 }
 
+export async function markOrderProcessed(empresaId, ordenId) {
+  await updateDoc(doc(db, 'empresas', empresaId, 'ordenes', ordenId), {
+    estado: 'procesado',
+    procesadoAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
 export async function deleteOrder(empresaId, ordenId) {
   await updateDoc(doc(db, 'empresas', empresaId, 'ordenes', ordenId), {
     estado: 'cancelada',
     updatedAt: serverTimestamp()
   });
+}
+
+export function listenProcessedOrders(empresaId, cb) {
+  return onSnapshot(
+    query(collection(db, 'empresas', empresaId, 'ordenes'), where('estado', '==', 'procesado')),
+    snap => {
+      cb(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.procesadoAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0) - (a.procesadoAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0))
+      );
+    }
+  );
+}
+
+export async function deleteOrderPermanently(empresaId, ordenId) {
+  await deleteDoc(doc(db, 'empresas', empresaId, 'ordenes', ordenId));
 }
 
 export function listenOrdenes(empresaId, cb) {

@@ -33,39 +33,51 @@ function scoreColumns(headers, sampleRows) {
     if (isDateOrEmpty) return { h, codeScore: -99, descScore: -99, priceScore: -99 };
 
     const numericVals = vals.filter(v => {
-      const n = parseFloat(String(v).replace(/[,$. ]/g, '').replace(',', '.'));
+      const n = parseFloat(String(v).replace(/[,$ ]/g, '').replace(',', '.'));
       return !isNaN(n) && n > 0;
     });
-    const textVals = vals.filter(v => typeof v === 'string' && v.length > 2);
     const shortVals = vals.filter(v => String(v).length > 0 && String(v).length <= 20);
     const longVals = vals.filter(v => typeof v === 'string' && v.length > 8);
 
     let codeScore = 0, descScore = 0, priceScore = 0;
 
-    // Por nombre de columna
-    if (/c[oó]d|sku|ref|art[ií]c/.test(hL)) codeScore += 12;
-    if (/desc|nombre|produc|articu|detal/.test(hL)) descScore += 12;
-    if (/prec.*uni|p\.unit|p\.u\b|pvp|\$ u/.test(hL)) priceScore += 12;
-    if (/prec/.test(hL) && !/total|dto|desc/.test(hL)) priceScore += 6;
+    // Por nombre de columna (pesos altos — son señales fuertes)
+    if (/c[oó]d|sku|ref\b|art[ií]c|item/.test(hL)) codeScore += 15;
+    if (/desc|nombre|produc|articu|detal|mercader/.test(hL)) descScore += 15;
+    if (/prec.*uni|p\.unit|p\.u\b|pvp|\$ u|unit.*prec/.test(hL)) priceScore += 15;
+    if (/prec/.test(hL) && !/total|dto|desc|bonif|may|min|max|lista/.test(hL)) priceScore += 5;
+    // Precio promedio/vigente/actual son buenos candidatos si no hay precio unitario
+    if (/prom|vigent|actual|venta/.test(hL) && /prec/.test(hL)) priceScore += 8;
 
     // Por contenido de datos
-    codeScore += shortVals.length * 0.4;
-    descScore += longVals.length * 0.6;
-    priceScore += numericVals.length * 0.7;
+    codeScore  += shortVals.length * 0.4;
+    descScore  += longVals.length  * 0.6;
+    priceScore += numericVals.length * 0.8;
 
     // Penalizaciones
-    if (/total|subtotal/.test(hL)) priceScore -= 8;
-    if (/dto|desc|bonif|bon\b/.test(hL)) priceScore -= 6;
-    if (/cant|qty|stock/.test(hL)) priceScore -= 4;
-    if (numericVals.length > vals.length * 0.8) { codeScore -= 4; descScore -= 4; }
+    if (/total|subtotal/.test(hL))      priceScore -= 10;
+    if (/dto|desc|bonif|bon\b/.test(hL)) priceScore -= 8;
+    if (/cant|qty|stock|bulto/.test(hL)) { priceScore -= 6; codeScore -= 2; }
+    if (numericVals.length > vals.length * 0.8) { codeScore -= 5; descScore -= 5; }
+    // Si la columna tiene valores muy largos no es código
+    if (longVals.length > vals.length * 0.5) codeScore -= 4;
 
     return { h, codeScore, descScore, priceScore };
   });
 }
 
-function pickBest(scores, role) {
-  const key = `${role}Score`;
-  return scores.reduce((best, s) => s[key] > best[key] ? s : best, { [key]: -1, h: '' }).h;
+// Elige el mejor para cada rol sin repetir columnas entre roles
+function pickBestUnique(scores) {
+  const pick = (role, exclude = []) => {
+    const key = `${role}Score`;
+    const filtered = scores.filter(s => !exclude.includes(s.h));
+    if (!filtered.length) return '';
+    return filtered.reduce((best, s) => s[key] > best[key] ? s : best, { [key]: -1, h: '' }).h;
+  };
+  const precio     = pick('price');
+  const codigo     = pick('code',  [precio]);
+  const descripcion = pick('desc', [precio, codigo]);
+  return { codigo, descripcion, precio };
 }
 
 function getSamples(rows, headers, colName, n = 3) {
@@ -100,8 +112,14 @@ export default function ImportCatalog({ onClose }) {
       try {
         const XLSX = await import('xlsx');
         const wb = XLSX.read(evt.target.result, { type: 'binary' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        // Elegir la hoja con más filas de datos (no siempre la primera)
+        let bestSheet = wb.Sheets[wb.SheetNames[0]];
+        let bestCount = 0;
+        wb.SheetNames.forEach(name => {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' });
+          if (rows.length > bestCount) { bestCount = rows.length; bestSheet = wb.Sheets[name]; }
+        });
+        const rawRows = XLSX.utils.sheet_to_json(bestSheet, { header: 1, defval: '' });
 
         const hIdx = findHeaderRowIndex(rawRows);
         const hdrs = rawRows[hIdx].map((h, i) => (String(h).trim() || `Col_${i + 1}`));
@@ -111,11 +129,7 @@ export default function ImportCatalog({ onClose }) {
         setData(dataRows);
 
         const scores = scoreColumns(hdrs, dataRows.slice(0, 30));
-        const auto = {
-          codigo: pickBest(scores, 'code'),
-          descripcion: pickBest(scores, 'desc'),
-          precio: pickBest(scores, 'price'),
-        };
+        const auto = pickBestUnique(scores);
         setMapped(auto);
       } catch (err) {
         alert('Error al leer el archivo.');
@@ -260,8 +274,15 @@ export default function ImportCatalog({ onClose }) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm" style={{ color: 'var(--success)', fontWeight: 600 }}>
-            ✓ {data.length} filas detectadas
+          <p className="text-sm" style={{ color: data.length < 5 ? 'var(--warning, #F7941D)' : 'var(--success)', fontWeight: 600 }}>
+            {data.length < 5 ? '⚠️' : '✓'} {data.length} fila{data.length !== 1 ? 's' : ''} detectada{data.length !== 1 ? 's' : ''}
+            {data.length < 5 && <span style={{ fontWeight: 400, fontSize: '0.78rem', display: 'block', color: 'var(--text-muted)' }}>
+              Puede que el encabezado no se detectó bien. Verificá que las columnas de abajo sean correctas.
+            </span>}
+          </p>
+
+          <p className="text-muted" style={{ fontSize: '0.75rem', marginBottom: '-0.5rem' }}>
+            Columnas encontradas: <strong>{headers.join(' · ')}</strong>
           </p>
 
           {['codigo', 'descripcion', 'precio'].map((role) => {

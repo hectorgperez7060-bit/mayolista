@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tag, ShoppingCart, History, ChevronDown, ChevronUp, Plus, Ticket, Check, AlertCircle, X } from 'lucide-react';
+import { Tag, ShoppingCart, History, ChevronDown, ChevronUp, Plus, Ticket, Check, AlertCircle, X, List } from 'lucide-react';
 import { useStore } from '../store';
 import { validateCodigoDescuento, markCodigoUsado } from '../services/firebase';
 
@@ -126,6 +126,14 @@ export default function ClienteHomeScreen({ onNavigate }) {
           <ShoppingCart size={26} style={{ color: 'hsl(270,100%,70%)', marginBottom: '0.5rem' }} />
           <p style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>Nuevo pedido</p>
           <p style={{ fontSize: '0.75rem', color: 'hsl(270,60%,70%)' }}>Buscar productos</p>
+        </button>
+        <button onClick={() => onNavigate('lista')} style={{
+          padding: '1.1rem', borderRadius: '16px', border: '2px solid hsl(150,70%,45%)',
+          background: 'hsla(150,70%,45%,0.15)', cursor: 'pointer', textAlign: 'left'
+        }}>
+          <List size={26} style={{ color: 'hsl(150,70%,55%)', marginBottom: '0.5rem' }} />
+          <p style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>Lista de precios</p>
+          <p style={{ fontSize: '0.75rem', color: 'hsl(150,50%,65%)' }}>Ver y descargar PDF</p>
         </button>
         <button onClick={() => onNavigate('history')} style={{
           padding: '1.1rem', borderRadius: '16px', border: '2px solid hsla(0,0%,100%,0.15)',

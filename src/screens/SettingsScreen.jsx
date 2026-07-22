@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useStore } from '../store';
+import { updateEmpresaData } from '../services/firebase';
 import { Save, LogOut, ChevronLeft, Building2, User, ImagePlus, Trash2 } from 'lucide-react';
 
 function resizeImage(file, maxW = 500, maxH = 250) {
@@ -30,6 +31,8 @@ const CONDICION_IVA = ['Responsable Inscripto', 'Monotributista', 'Exento', 'Con
 export default function SettingsScreen({ onNavigate, onLogout }) {
   const mayorista    = useStore(state => state.mayorista);
   const setMayorista = useStore(state => state.setMayorista);
+  const empresaId    = useStore(state => state.empresaId);
+  const rol          = useStore(state => state.rol);
   const [form, setForm]               = useState({
     nombre:       mayorista.nombre       || '',
     cuit:         mayorista.cuit         || '',
@@ -57,9 +60,21 @@ export default function SettingsScreen({ onNavigate, onLogout }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setMayorista(form);
+    if (rol === 'admin' && empresaId) {
+      try {
+        await updateEmpresaData(empresaId, {
+          nombre:       form.nombre,
+          cuit:         form.cuit,
+          direccion:    form.direccion,
+          telefono:     form.telefono,
+          email:        form.email,
+          condicionIVA: form.condicionIVA,
+        });
+      } catch {}
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -88,19 +103,24 @@ export default function SettingsScreen({ onNavigate, onLogout }) {
               className="input-glass"
               placeholder="Nombre / Razón Social"
               value={form.nombre}
-              onChange={e => setForm({ ...form, nombre: e.target.value })}
+              onChange={e => rol === 'admin' && setForm({ ...form, nombre: e.target.value })}
+              readOnly={rol !== 'admin'}
+              style={rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}}
             />
             <input
               className="input-glass"
               placeholder="CUIT (ej: 20-12345678-9)"
               value={form.cuit}
-              onChange={e => setForm({ ...form, cuit: e.target.value })}
+              onChange={e => rol === 'admin' && setForm({ ...form, cuit: e.target.value })}
+              readOnly={rol !== 'admin'}
+              style={rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}}
             />
             <select
               className="input-glass"
               value={form.condicionIVA}
-              onChange={e => setForm({ ...form, condicionIVA: e.target.value })}
-              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+              onChange={e => rol === 'admin' && setForm({ ...form, condicionIVA: e.target.value })}
+              disabled={rol !== 'admin'}
+              style={{ appearance: 'none', WebkitAppearance: 'none', ...(rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}) }}
             >
               <option value="">Condición IVA</option>
               {CONDICION_IVA.map(c => <option key={c} value={c}>{c}</option>)}
@@ -109,44 +129,52 @@ export default function SettingsScreen({ onNavigate, onLogout }) {
               className="input-glass"
               placeholder="Dirección"
               value={form.direccion}
-              onChange={e => setForm({ ...form, direccion: e.target.value })}
+              onChange={e => rol === 'admin' && setForm({ ...form, direccion: e.target.value })}
+              readOnly={rol !== 'admin'}
+              style={rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <input
                 className="input-glass"
                 placeholder="Teléfono"
                 value={form.telefono}
-                onChange={e => setForm({ ...form, telefono: e.target.value })}
+                onChange={e => rol === 'admin' && setForm({ ...form, telefono: e.target.value })}
+                readOnly={rol !== 'admin'}
+                style={rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}}
               />
               <input
                 className="input-glass"
                 type="email"
                 placeholder="Email"
                 value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                onChange={e => rol === 'admin' && setForm({ ...form, email: e.target.value })}
+                readOnly={rol !== 'admin'}
+                style={rol !== 'admin' ? { opacity: 0.7, cursor: 'default' } : {}}
               />
             </div>
           </div>
-          <button
-            type="submit"
-            style={{
-              marginTop: '1rem', width: '100%', padding: '0.85rem',
-              borderRadius: '14px', border: 'none',
-              background: saved
-                ? 'hsl(150,80%,35%)'
-                : 'linear-gradient(135deg, hsl(270,100%,55%), hsl(240,100%,60%))',
-              color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-              transition: 'background 0.3s'
-            }}
-          >
-            <Save size={18} /> {saved ? '¡Guardado!' : 'Guardar datos'}
-          </button>
+          {rol === 'admin' && (
+            <button
+              type="submit"
+              style={{
+                marginTop: '1rem', width: '100%', padding: '0.85rem',
+                borderRadius: '14px', border: 'none',
+                background: saved
+                  ? 'hsl(150,80%,35%)'
+                  : 'linear-gradient(135deg, hsl(270,100%,55%), hsl(240,100%,60%))',
+                color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                transition: 'background 0.3s'
+              }}
+            >
+              <Save size={18} /> {saved ? '¡Guardado!' : 'Guardar datos'}
+            </button>
+          )}
         </div>
       </form>
 
-      {/* Logo del mayorista */}
-      <div className="glass-panel p-4 mb-4">
+      {/* Logo del mayorista — solo visible para admin */}
+      <div className="glass-panel p-4 mb-4" style={{ display: rol === 'admin' ? undefined : 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
           <ImagePlus size={20} style={{ color: 'var(--primary)' }} />
           <div>

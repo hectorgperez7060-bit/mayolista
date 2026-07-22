@@ -318,7 +318,7 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
   };
 
   const handleFinish = async () => {
-    if ((rol === 'vendedor' || rol === 'cliente') && empresaId && vendedorId) {
+    if ((rol === 'vendedor' || rol === 'cliente' || rol === 'admin') && empresaId && vendedorId) {
       try {
         await saveOrderToFirebase(empresaId, vendedorId, vendedorNombre, {
           client, items, total, orderDiscount,
@@ -589,13 +589,13 @@ export default function SummaryScreen({ onNavigate, onBack, readonlyDiscounts = 
         </button>
       </div>
 
-      {rol === 'vendedor' ? (
+      {(rol === 'vendedor' || rol === 'admin') ? (
         <button onClick={handleFinish} style={{
           width: '100%', padding: '1rem', borderRadius: '16px', border: 'none',
           background: 'linear-gradient(135deg, hsl(270,100%,55%), hsl(240,100%,60%))',
           color: '#fff', fontWeight: 800, fontSize: '1.05rem', cursor: 'pointer'
         }}>
-          Enviar al Mayorista
+          {rol === 'admin' ? 'Guardar en Pedidos' : 'Enviar al Mayorista'}
         </button>
       ) : (
         <button className="btn btn-primary w-full" onClick={handleFinish}>

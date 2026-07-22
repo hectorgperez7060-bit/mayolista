@@ -15,9 +15,11 @@ service cloud.firestore {
     }
     
     function isOwnerOfEmpresa(empresaId) {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-             getUserEmpresaId() == empresaId;
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/empresas/$(empresaId)).data.get('ownerId', '') == request.auth.uid ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         getUserEmpresaId() == empresaId)
+      );
     }
 
     function isVendedor(empresaId) {
@@ -60,8 +62,8 @@ service cloud.firestore {
     // ============ CLIENTES (Por empresa) ============
     match /empresas/{empresaId}/clientes/{clienteId} {
       allow read: if hasAccess(empresaId) || isClienteDeEmpresa(empresaId);
-      allow create, update: if hasAccess(empresaId) ||
-                     (isAuthenticated() && request.resource.data.empresaId == empresaId);
+      // FIX: eliminada condición genérica que permitía a cualquier usuario autenticado crear/editar clientes
+      allow create, update: if hasAccess(empresaId) || isClienteDeEmpresa(empresaId);
       allow delete: if isOwnerOfEmpresa(empresaId);
     }
 
@@ -69,7 +71,10 @@ service cloud.firestore {
     match /empresas/{empresaId}/vendedores/{vendedorId} {
       allow read: if hasAccess(empresaId);
       allow create: if isAuthenticated() && request.auth.uid == vendedorId;
-      allow update: if isOwnerOfEmpresa(empresaId) || (request.auth.uid == vendedorId);
+      // FIX: vendedor solo puede actualizar su propio doc pero NO puede modificar el campo "bloqueado"
+      allow update: if isOwnerOfEmpresa(empresaId) ||
+                     (request.auth.uid == vendedorId &&
+                      !("bloqueado" in request.resource.data.diff(resource.data).affectedKeys()));
       allow delete: if isOwnerOfEmpresa(empresaId);
     }
 
@@ -79,7 +84,8 @@ service cloud.firestore {
       allow create: if (hasAccess(empresaId) || isClienteDeEmpresa(empresaId)) &&
                       request.resource.data.empresaId == empresaId;
       allow update: if isOwnerOfEmpresa(empresaId);
-      allow delete: if false;
+      // FIX: el dueño de la empresa puede eliminar pedidos (antes bloqueado con false)
+      allow delete: if isOwnerOfEmpresa(empresaId);
     }
 
     // ============ SESIONES (Por empresa) ============
